@@ -12,7 +12,7 @@ RPM_MIN, RPM_MAX = 1000, 3500
 TORQUE_MIN, TORQUE_MAX = 3.0, 75.0
 
 # Streamlit page configuration
-st.set_page_config(page_title="Live Predictive Monitoring Dashboard", layout="centered")
+st.set_page_config(page_title="Monitoring Dashboard", layout="centered")
 st.title("Machine Monitoring Dashboard")
 
 # File uploader for sensor dataset
@@ -26,9 +26,16 @@ if uploaded_file:
     st.subheader("Uploaded Dataset Preview")
     st.dataframe(df.head())
 
-    # Start monitoring
+    # Placeholder for predictions and results
+    prediction_results = []
+    time_series = []
+    temp_series = []
+    rpm_series = []
+    torque_series = []
+
+    # Start monitorig
     if st.button("Start Monitoring"):
-        st.subheader("Prediction Results (Live)")
+        st.subheader("Results")
         log_file = open("live_monitor_log.txt", "a")
 
         for i, row in df.iterrows():
@@ -52,10 +59,18 @@ if uploaded_file:
             input_data = [[temp_n, rpm_n, torque_n]]
             prediction = model.predict(input_data)[0]
 
+            # Collect results for charting
+            prediction_results.append(prediction)
+            time_series.append(i + 1)
+            temp_series.append(temp)
+            rpm_series.append(rpm)
+            torque_series.append(torque)
+
             # Show alerts
             if prediction == 1:
                 st.error(f"Failure detected at row {i+1} — ALERT!")
-                st.toast("FAILURE Detected!", icon="⚠️")
+                
+                st.toast("Failure Detected!", icon="⚠️")
                 st.markdown(
                     """
                     <div style='background-color:#ffcccc;padding:10px;border-radius:10px;'>
@@ -75,3 +90,19 @@ if uploaded_file:
 
         # Show log viewer
 
+        # Add dynamic line charts for visualization
+        st.subheader("Prediction Timeline")
+        result_df = pd.DataFrame({
+            "Timestamp (row #)": time_series,
+            "Prediction (0=Normal, 1=Failure)": prediction_results
+        })
+        st.line_chart(result_df.set_index("Timestamp (row #)"))
+
+        st.subheader("Sensor Readings Over Time")
+        sensor_df = pd.DataFrame({
+            "Timestamp (row #)": time_series,
+            "Temperature (°C)": temp_series,
+            "Rotational Speed (RPM)": rpm_series,
+            "Torque (Nm)": torque_series
+        })
+        st.line_chart(sensor_df.set_index("Timestamp (row #)"))
